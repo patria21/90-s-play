@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BACK TO THE 90'S</title>
+  <style>
+    body {
+      background-color: #444;
+      color: white;
+      font-family: 'Press Start 2P', monospace;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    #gameCanvas {
+      background-color: #222;
+      border: 3px solid #fff;
+    }
+    .score-board {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+    }
+    .powered-by {
+      color: #aaa;
+      font-size: 1rem;
+    }
+    /* Custom font for 8-bit retro style */
+    @font-face {
+      font-family: 'Press Start 2P';
+      src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap') format('truetype');
+    }
+  </style>
+</head>
+<body>
+  <h1>BACK TO THE 90'S</h1>
+  <div class="score-board">Score: <span id="score">0</span></div>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <div class="powered-by">Powered by w000zi</div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const tankWidth = 40;  // Membesarkan ukuran tank
+    const tankHeight = 40; // Membesarkan ukuran tank
+    const bulletWidth = 5;
+    const bulletHeight = 10;
+    const enemyWidth = 20;
+    const enemyHeight = 20;
+    const speed = 5;
+    let tankX = canvas.width / 2 - tankWidth / 2;
+    let tankY = canvas.height - tankHeight - 10;
+    let tankSpeed = 5;
+    let tankDirection = 0; // 0 = stationary, 1 = up, 2 = down, 3 = left, 4 = right
+    let bullets = [];
+    let enemies = [];
+    let score = 0;
+    let gameOver = false;
+
+    // Tank object (as a triangle)
+    const tank = {
+      x: tankX,
+      y: tankY,
+      size: 40, // Membesarkan ukuran tank
+      color: '#00ff00',
+      draw: function() {
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y); // top point
+        ctx.lineTo(this.x - this.size / 2, this.y + this.size); // left point
+        ctx.lineTo(this.x + this.size / 2, this.y + this.size); // right point
+        ctx.closePath();
+        ctx.fillStyle = this.color;
+        ctx.fill();
+      }
+    };
+
+    // Bullet object
+    function Bullet(x, y) {
+      this.x = x;
+      this.y = y;
+      this.width = bulletWidth;
+      this.height = bulletHeight;
+      this.speed = 7;
+      this.direction = 1; // 1 = up
+    }
+
+    // Enemy object
+    function Enemy(x, y) {
+      this.x = x;
+      this.y = y;
+      this.width = enemyWidth;
+      this.height = enemyHeight;
+      this.color = '#ff0000';
+      this.speed = 2;
+    }
+
+    // Draw bullets
+    function drawBullets() {
+      for (let i = 0; i < bullets.length; i++) {
+        ctx.fillStyle = '#ffff00';
+        ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].width, bullets[i].height);
+      }
+    }
+
+    // Draw enemies
+    function drawEnemies() {
+      for (let i = 0; i < enemies.length; i++) {
+        ctx.fillStyle = enemies[i].color;
+        ctx.fillRect(enemies[i].x, enemies[i].y, enemies[i].width, enemies[i].height);
+      }
+    }
+
+    // Move tank
+    function moveTank() {
+      if (tankDirection === 1 && tank.y > 0) tank.y -= tankSpeed; // up
+      if (tankDirection === 2 && tank.y < canvas.height - tank.height) tank.y += tankSpeed; // down
+      if (tankDirection === 3 && tank.x > 0) tank.x -= tankSpeed; // left
+      if (tankDirection === 4 && tank.x < canvas.width - tank.size / 2) tank.x += tankSpeed; // right
+    }
+
+    // Move bullets
+    function moveBullets() {
+      for (let i = 0; i < bullets.length; i++) {
+        bullets[i].y -= bullets[i].speed;
+        if (bullets[i].y < 0) {
+          bullets.splice(i, 1);
+          i--;
+        }
+      }
+    }
+
+    // Spawn enemies
+    function spawnEnemies() {
+      if (Math.random() < 0.02) {
+        let x = Math.random() * (canvas.width - enemyWidth);
+        enemies.push(new Enemy(x, 0));
+      }
+    }
+
+    // Move enemies
+    function moveEnemies() {
+      for (let i = 0; i < enemies.length; i++) {
+        enemies[i].y += enemies[i].speed;
+        if (enemies[i].y > canvas.height) {
+          enemies.splice(i, 1);
+          i--;
+        }
+      }
+    }
+
+    // Check for collisions between bullets and enemies
+    function checkCollisions() {
+      for (let i = 0; i < bullets.length; i++) {
+        for (let j = 0; j < enemies.length; j++) {
+          if (
+            bullets[i].x < enemies[j].x + enemies[j].width &&
+            bullets[i].x + bullets[i].width > enemies[j].x &&
+            bullets[i].y < enemies[j].y + enemies[j].height &&
+            bullets[i].y + bullets[i].height > enemies[j].y
+          ) {
+            enemies.splice(j, 1);
+            bullets.splice(i, 1);
+            i--;
+            score += 10; // Update score here
+            document.getElementById('score').textContent = score; // Update the score display
+            break;
+          }
+        }
+      }
+    }
+
+    // Draw score
+    function drawScore() {
+      ctx.font = '16px Press Start 2P';
+      ctx.fillStyle = '#fff';
+      ctx.fillText('Score: ' + score, 10, 20); // Update the score text on canvas
+    }
+
+    // Game over logic
+    function gameOverCheck() {
+      for (let i = 0; i < enemies.length; i++) {
+        if (
+          tank.x < enemies[i].x + enemies[i].width &&
+          tank.x + tank.size / 2 > enemies[i].x &&
+          tank.y < enemies[i].y + enemies[i].height &&
+          tank.y + tank.size > enemies[i].y
+        ) {
+          gameOver = true;
+          ctx.font = '32px Press Start 2P';
+          ctx.fillStyle = '#ff0000';
+          ctx.fillText('GAME OVER', canvas.width / 4, canvas.height / 2);
+          break;
+        }
+      }
+    }
+
+    // Update game logic
+    function update() {
+      if (gameOver) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      moveTank();
+      moveBullets();
+      moveEnemies();
+      checkCollisions();
+      spawnEnemies();
+      tank.draw();
+      drawBullets();
+      drawEnemies();
+      drawScore(); // Ensure score is drawn on canvas
+      gameOverCheck();
+    }
+
+    // Key controls
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp') tankDirection = 1;
+      if (e.key === 'ArrowDown') tankDirection = 2;
+      if (e.key === 'ArrowLeft') tankDirection = 3;
+      if (e.key === 'ArrowRight') tankDirection = 4;
+      if (e.key === ' ') {
+        bullets.push(new Bullet(tank.x + tank.size / 2 - bulletWidth / 2, tank.y));
+      }
+    });
+
+    // Reset game
+    function resetGame() {
+      tank.x = canvas.width / 2 - tankWidth / 2;
+      tank.y = canvas.height - tankHeight - 10;
+      score = 0;
+      gameOver = false;
+      enemies = [];
+      bullets = [];
+      update();
+    }
+
+    // Start the game loop
+    setInterval(update, 20);
+  </script>
+</body>
+</html>
