@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tetris by W000zi</title>
     <style>
         body {
@@ -11,22 +11,25 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #0d0d0d; /* Hitam pekat */
+            background-color: #0d0d0d;
             font-family: 'Courier New', Courier, monospace;
+            overflow: hidden; /* Mencegah scroll */
         }
         .game-container {
             text-align: center;
+            position: relative;
         }
         canvas {
-            border: 3px solid #00ff00; /* Border neon tebal */
-            background-color: #1a1a1a; /* Latar canvas gelap */
-            box-shadow: 0 0 15px #00ff00; /* Efek glowing neon */
+            border: 3px solid #00ff00;
+            background-color: #1a1a1a;
+            box-shadow: 0 0 15px #00ff00;
+            display: block; /* Mencegah margin ekstra */
         }
         .score, .high-score {
             margin-top: 10px;
             font-size: 22px;
-            color: #00ff00; /* Hijau neon */
-            text-shadow: 0 0 5px #00ff00; /* Efek glowing */
+            color: #00ff00;
+            text-shadow: 0 0 5px #00ff00;
         }
         .powered-by {
             margin-top: 10px;
@@ -38,7 +41,7 @@
 </head>
 <body>
     <div class="game-container">
-        <canvas id="tetris" width="300" height="600"></canvas>
+        <canvas id="tetris"></canvas>
         <div class="score">Score: <span id="score">0</span></div>
         <div class="high-score">High Score: <span id="high-score">0</span></div>
         <div class="powered-by">Powered by W000zi</div>
@@ -54,16 +57,16 @@
         const BOARD_WIDTH = 10;
         const BOARD_HEIGHT = 20;
 
-        // Warna neon (satu warna untuk semua tetromino)
+        // Warna neon
         const COLORS = [
-            null, // 0: Kosong
-            '#00ff00', // 1: I
-            '#00ff00', // 2: O
-            '#00ff00', // 3: T
-            '#00ff00', // 4: S
-            '#00ff00', // 5: Z
-            '#00ff00', // 6: J
-            '#00ff00', // 7: L
+            null,
+            '#00ff00', // I
+            '#00ff00', // O
+            '#00ff00', // T
+            '#00ff00', // S
+            '#00ff00', // Z
+            '#00ff00', // J
+            '#00ff00', // L
         ];
 
         // Definisi tetromino
@@ -117,6 +120,31 @@
         // Tampilkan high score awal
         highScoreElement.textContent = highScore;
 
+        // Atur ukuran canvas secara dinamis
+        function resizeCanvas() {
+            const maxWidth = window.innerWidth * 0.9; // 90% lebar layar
+            const maxHeight = window.innerHeight * 0.7; // 70% tinggi layar
+            const aspectRatio = BOARD_WIDTH / BOARD_HEIGHT; // Rasio aspek 10:20
+
+            let canvasWidth = maxWidth;
+            let canvasHeight = canvasWidth / aspectRatio;
+
+            if (canvasHeight > maxHeight) {
+                canvasHeight = maxHeight;
+                canvasWidth = canvasHeight * aspectRatio;
+            }
+
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            // Skala BLOCK_SIZE berdasarkan canvas
+            ctx.scale(canvasWidth / (BOARD_WIDTH * BLOCK_SIZE), canvasHeight / (BOARD_HEIGHT * BLOCK_SIZE));
+        }
+
+        // Panggil resizeCanvas saat load dan resize
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
         // Membuat tetromino baru
         function createPiece() {
             const type = Math.floor(Math.random() * TETROMINOES.length);
@@ -124,9 +152,7 @@
             currentX = Math.floor((BOARD_WIDTH - currentPiece[0].length) / 2);
             currentY = 0;
 
-            // Cek jika piece baru bertabrakan (game over)
             if (collides(currentPiece, currentX, currentY)) {
-                // Perbarui high score jika skor saat ini lebih tinggi
                 if (score > highScore) {
                     highScore = score;
                     localStorage.setItem('tetrisHighScore', highScore);
@@ -184,7 +210,6 @@
             if (linesCleared > 0) {
                 score += linesCleared * 100;
                 scoreElement.textContent = score;
-                // Perbarui high score jika diperlukan
                 if (score > highScore) {
                     highScore = score;
                     localStorage.setItem('tetrisHighScore', highScore);
@@ -231,8 +256,8 @@
         // Gambar board dan piece
         function draw() {
             // Bersihkan canvas
-            ctx.fillStyle = '#1a1a1a'; // Latar canvas gelap
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
 
             // Gambar board
             for (let y = 0; y < BOARD_HEIGHT; y++) {
@@ -256,7 +281,6 @@
                                 BLOCK_SIZE,
                                 BLOCK_SIZE
                             );
-                            // Border tebal untuk piece aktif
                             ctx.strokeStyle = '#00ff00';
                             ctx.lineWidth = 2;
                             ctx.strokeRect(
@@ -275,12 +299,12 @@
         function update() {
             if (gameOver) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#00ff00'; // Teks hijau neon
+                ctx.fillRect(0, 0, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
+                ctx.fillStyle = '#00ff00';
                 ctx.font = '30px Courier New';
                 ctx.textAlign = 'center';
-                ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2);
-                ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2 + 40);
+                ctx.fillText('Game Over', (BOARD_WIDTH * BLOCK_SIZE) / 2, (BOARD_HEIGHT * BLOCK_SIZE) / 2);
+                ctx.fillText(`Score: ${score}`, (BOARD_WIDTH * BLOCK_SIZE) / 2, (BOARD_HEIGHT * BLOCK_SIZE) / 2 + 40);
                 return;
             }
 
@@ -318,7 +342,7 @@
 
         // Mulai game
         createPiece();
-        setInterval(update, 1000); // Jatuh setiap 1 detik
+        setInterval(update, 1000);
     </script>
 </body>
 </html>
